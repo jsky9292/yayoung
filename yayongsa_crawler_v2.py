@@ -288,32 +288,49 @@ def extract_details_from_article(driver, article_url):
             content_element = driver.find_element(By.ID, "user_contents")
             content_text = content_element.text
 
-            # 가격 패턴 찾기 (만원, 원 등)
+            # 가격 패턴 찾기 (판매가격 : 형식 우선)
             import re
             price_patterns = [
+                r'판매가격\s*[:\s]*(\d{1,3}(?:,\d{3})*)\s*(?:만원|만)',
+                r'판매가격\s*[:\s]*(\d{1,3}(?:,\d{3})*)',
+                r'판매가\s*[:\s]*(\d{1,3}(?:,\d{3})*)\s*(?:만원|만)',
+                r'가격\s*[:\s]*(\d{1,3}(?:,\d{3})*)\s*(?:만원|만)',
                 r'(\d{1,3}(?:,\d{3})*)\s*만원',
+                r'판매가\s*[:\s]*(\d{1,3}(?:,\d{3})*)',
+                r'가격\s*[:\s]*(\d{1,3}(?:,\d{3})*)',
                 r'(\d{1,3}(?:,\d{3})*)\s*원',
-                r'가격[:\s]*(\d{1,3}(?:,\d{3})*)',
-                r'판매가[:\s]*(\d{1,3}(?:,\d{3})*)',
             ]
 
             for pattern in price_patterns:
-                matches = re.findall(pattern, content_text)
+                matches = re.findall(pattern, content_text, re.IGNORECASE)
                 if matches:
                     price_str = matches[0].replace(',', '')
                     price = int(price_str)
-                    # 만원 단위면 10000 곱하기
-                    if '만원' in content_text:
+                    # 패턴에 '만원' 또는 '만'이 포함되어 있으면 10000 곱하기
+                    if '만원' in pattern or '만' in pattern:
                         price *= 10000
                     break
 
+            # 가격을 못 찾았으면 더 넓은 패턴으로 재시도
+            if price == 0:
+                # 숫자만 찾기 (10000 이상인 첫 번째 숫자)
+                number_pattern = r'(\d{5,7})'
+                numbers = re.findall(number_pattern, content_text.replace(',', ''))
+                for num_str in numbers:
+                    num = int(num_str)
+                    if 10000 <= num <= 9999999:  # 1만원~999만원 범위
+                        price = num
+                        break
+
+            print(f"    추출된 가격: {price:,}원")
         except Exception as e:
             print(f"    가격 추출 실패: {e}")
 
         # 이미지 추출
         try:
-            # 여러 이미지 셀렉터 시도
+            # 여러 이미지 셀렉터 시도 (특정 위치 우선)
             image_selectors = [
+                "#user_contents > div:nth-child(10) > img",  # 사용자가 지정한 선택자
                 "#user_contents > div > img",
                 "#user_contents img",
                 ".user_contents img",
@@ -327,7 +344,9 @@ def extract_details_from_article(driver, article_url):
                         img_src = img.get_attribute('src')
                         if img_src and 'cafefile' in img_src:
                             images.append(img_src)
-                    break
+                    if images:  # 이미지를 찾았으면 중단
+                        print(f"    이미지 {len(images)}개 추출 (선택자: {selector})")
+                        break
 
         except Exception as e:
             print(f"    이미지 추출 실패: {e}")
