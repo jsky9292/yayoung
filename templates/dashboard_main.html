@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>글러브 마켓 - 메인 대시보드</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f4f7fa;
+            color: #333;
+        }
+
+        .header {
+            background: #2c3e50;
+            color: white;
+            padding: 15px 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .logout-btn {
+            background: #e74c3c;
+            color: white;
+            padding: 8px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .logout-btn:hover {
+            background: #c0392b;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+
+        /* 상품 카운트 카드 */
+        .count-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .count-card {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            text-align: center;
+        }
+
+        .count-card h3 {
+            color: #7f8c8d;
+            font-size: 14px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        .count-card .number {
+            font-size: 36px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .yahoo-card { border-left: 4px solid #e74c3c; }
+        .yayongsa-card { border-left: 4px solid #3498db; }
+        .total-card { border-left: 4px solid #2ecc71; }
+
+        /* 크롤링 버튼 섹션 */
+        .crawling-section {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            margin-bottom: 30px;
+        }
+
+        .crawling-section h2 {
+            font-size: 20px;
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+
+        .crawling-buttons {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .crawl-btn {
+            padding: 12px 30px;
+            font-size: 16px;
+            font-weight: 500;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .yahoo-btn {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .yahoo-btn:hover {
+            background: #c0392b;
+        }
+
+        .yayongsa-btn {
+            background: #3498db;
+            color: white;
+        }
+
+        .yayongsa-btn:hover {
+            background: #2980b9;
+        }
+
+        /* 분석 정보 섹션 */
+        .analysis-section {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            margin-bottom: 30px;
+        }
+
+        .analysis-section h2 {
+            font-size: 20px;
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+
+        .analysis-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .analysis-item {
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+
+        .analysis-item .label {
+            font-size: 12px;
+            color: #7f8c8d;
+            margin-bottom: 5px;
+        }
+
+        .analysis-item .value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        /* 대시보드 링크 버튼 */
+        .dashboard-links {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .dashboard-link {
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            text-align: center;
+            text-decoration: none;
+            color: #2c3e50;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+
+        .dashboard-link:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            border-color: #3498db;
+        }
+
+        .dashboard-link i {
+            font-size: 48px;
+            margin-bottom: 15px;
+            color: #3498db;
+        }
+
+        .dashboard-link h3 {
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+
+        .dashboard-link p {
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+
+        /* 관리자 섹션 */
+        .admin-section {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+
+        .admin-section h3 {
+            color: #856404;
+            margin-bottom: 15px;
+        }
+
+        .admin-btn {
+            background: #ffc107;
+            color: #212529;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            font-weight: 500;
+        }
+
+        .admin-btn:hover {
+            background: #e0a800;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <div class="logo">⚾ 글러브 마켓</div>
+            <div class="user-info">
+                <span>{{ current_user.username }}님</span>
+                {% if current_user.is_admin %}
+                <span style="background: #f39c12; padding: 4px 8px; border-radius: 3px;">관리자</span>
+                {% endif %}
+                <a href="{{ url_for('logout') }}" class="logout-btn">로그아웃</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- 상품 카운트 -->
+        <div class="count-cards">
+            <div class="count-card yahoo-card">
+                <h3>Yahoo Auction</h3>
+                <div class="number">{{ yahoo_count }}</div>
+            </div>
+            <div class="count-card yayongsa-card">
+                <h3>야용사 카페</h3>
+                <div class="number">{{ yayongsa_count }}</div>
+            </div>
+            <div class="count-card total-card">
+                <h3>전체 상품</h3>
+                <div class="number">{{ total_count }}</div>
+            </div>
+        </div>
+
+        <!-- 관리자 섹션 -->
+        {% if current_user.is_admin %}
+        <div class="admin-section">
+            <h3>🔐 관리자 기능</h3>
+            <button class="admin-btn" onclick="location.href='/admin'">사용자 관리</button>
+            <button class="admin-btn" onclick="location.href='/admin/stats'">통계 보기</button>
+            <button class="admin-btn" onclick="location.href='/settings'">설정</button>
+        </div>
+        {% endif %}
+
+        <!-- 크롤링 버튼 -->
+        <div class="crawling-section">
+            <h2>🔄 크롤링 실행</h2>
+            <div class="crawling-buttons">
+                <button class="crawl-btn yahoo-btn" onclick="runYahooCrawler()">
+                    Yahoo Auction 크롤링
+                </button>
+                <button class="crawl-btn yayongsa-btn" onclick="runYayongsaCrawler()">
+                    야용사 카페 크롤링
+                </button>
+            </div>
+        </div>
+
+        <!-- 분석 정보 -->
+        <div class="analysis-section">
+            <h2>📊 분석 정보</h2>
+            <div class="analysis-grid">
+                <div class="analysis-item">
+                    <div class="label">Yahoo 평균가</div>
+                    <div class="value">¥{{ yahoo_avg_price|default('0') }}</div>
+                </div>
+                <div class="analysis-item">
+                    <div class="label">야용사 평균가</div>
+                    <div class="value">₩{{ yayongsa_avg_price|default('0') }}</div>
+                </div>
+                <div class="analysis-item">
+                    <div class="label">최근 크롤링</div>
+                    <div class="value">{{ last_crawl|default('없음') }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 대시보드 링크 -->
+        <div class="dashboard-links">
+            <a href="/dashboard/products" class="dashboard-link">
+                <div style="font-size: 48px;">🛍️</div>
+                <h3>크롤링 제품 대시보드</h3>
+                <p>전체 제품 목록과 상세 정보 확인</p>
+            </a>
+            <a href="/dashboard/analysis" class="dashboard-link">
+                <div style="font-size: 48px;">📈</div>
+                <h3>분석 대시보드</h3>
+                <p>가격, 브랜드, 포지션별 통계 분석</p>
+            </a>
+        </div>
+    </div>
+
+    <script>
+        function runYahooCrawler() {
+            if(confirm('Yahoo Auction 크롤링을 시작하시겠습니까?')) {
+                fetch('/api/crawl/yahoo', { method: 'POST' })
+                    .then(response => response.json())
+                    .then(data => {
+                        alert(data.message || '크롤링이 시작되었습니다.');
+                        setTimeout(() => location.reload(), 2000);
+                    })
+                    .catch(error => alert('오류: ' + error));
+            }
+        }
+
+        function runYayongsaCrawler() {
+            if(confirm('야용사 카페 크롤링을 시작하시겠습니까?\n수동 로그인이 필요합니다.')) {
+                fetch('/api/crawl/yayongsa', { method: 'POST' })
+                    .then(response => response.json())
+                    .then(data => {
+                        alert(data.message || '크롤링이 시작되었습니다.');
+                    })
+                    .catch(error => alert('오류: ' + error));
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.py[cod]
+*.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+*.egg-info/
+dist/
+build/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Data files
+data/
+*.json
+*.csv
+*.xlsx
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Environment variables
+.env
+config.py
+
+# User data
+users/
+images/
+dashboards/
+
+# Test files
+test_*.py
+*_test.py
+*_backup.py
+*.bak
+
+# Temporary files
+tmp/
+temp/
+*.tmp

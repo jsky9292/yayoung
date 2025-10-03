@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>글러브 마켓 통계 분석</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .dashboard-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container dashboard-container">
+        <h1 class="text-center mb-5">📊 글러브 마켓 통계 분석</h1>
+
+        <!-- 상단 통계 카드 -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-value">{{ stats.total_items }}</div>
+                    <div class="stat-label">전체 상품</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-value">{{ stats.yahoo_items }}</div>
+                    <div class="stat-label">Yahoo Auction</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-value">{{ stats.yayongsa_items }}</div>
+                    <div class="stat-label">야용사 카페</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-value">
+                        {% if stats.yahoo_avg_price > 0 %}
+                            ¥{{ "{:,}".format(stats.yahoo_avg_price) }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </div>
+                    <div class="stat-label">Yahoo 평균가</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 차트 섹션 -->
+        <div class="row">
+            <!-- 브랜드별 분포 차트 -->
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <h3>브랜드별 분포</h3>
+                    <canvas id="brandChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 포지션별 분포 차트 -->
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <h3>포지션별 분포</h3>
+                    <canvas id="positionChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <!-- 신품/중고 비율 -->
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <h3>상품 상태</h3>
+                    <canvas id="conditionChart"></canvas>
+                </div>
+            </div>
+
+            <!-- 가격대 분포 -->
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <h3>가격대 분포 (¥)</h3>
+                    <canvas id="priceChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 상세 테이블 -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="chart-container">
+                    <h3>브랜드별 상세 통계</h3>
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>브랜드</th>
+                                <th>상품 수</th>
+                                <th>평균 가격</th>
+                                <th>비율</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for brand, data in brand_stats.items() %}
+                            <tr>
+                                <td>{{ brand }}</td>
+                                <td>{{ data.count }}</td>
+                                <td>
+                                    {% if data.count > 0 %}
+                                        ¥{{ "{:,}".format(data.total_price // data.count) }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if stats.yahoo_items > 0 %}
+                                        {{ "%.1f"|format(data.count * 100 / stats.yahoo_items) }}%
+                                    {% else %}
+                                        0%
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mt-4">
+            <a href="/dashboard" class="btn btn-primary btn-lg" style="margin: 10px; padding: 12px 30px; font-weight: 600;">대시보드로 돌아가기</a>
+            <a href="/dashboard/products" class="btn btn-success btn-lg" style="margin: 10px; padding: 12px 30px; font-weight: 600;">제품 목록 보기</a>
+        </div>
+    </div>
+
+    <script>
+        // 브랜드 차트
+        const brandCtx = document.getElementById('brandChart').getContext('2d');
+        const brandData = {
+            labels: [{% for brand in brand_stats.keys() %}'{{ brand }}',{% endfor %}],
+            datasets: [{
+                data: [{% for data in brand_stats.values() %}{{ data.count }},{% endfor %}],
+                backgroundColor: [
+                    'rgba(255, 99, 132, 0.8)',
+                    'rgba(54, 162, 235, 0.8)',
+                    'rgba(255, 206, 86, 0.8)',
+                    'rgba(75, 192, 192, 0.8)',
+                    'rgba(153, 102, 255, 0.8)',
+                    'rgba(255, 159, 64, 0.8)',
+                ]
+            }]
+        };
+        new Chart(brandCtx, {
+            type: 'pie',
+            data: brandData,
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                    }
+                }
+            }
+        });
+
+        // 포지션 차트
+        const positionCtx = document.getElementById('positionChart').getContext('2d');
+        const positionData = {
+            labels: [{% for position in position_stats.keys() %}'{{ position }}',{% endfor %}],
+            datasets: [{
+                label: '상품 수',
+                data: [{% for count in position_stats.values() %}{{ count }},{% endfor %}],
+                backgroundColor: 'rgba(102, 126, 234, 0.8)',
+            }]
+        };
+        new Chart(positionCtx, {
+            type: 'bar',
+            data: positionData,
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        // 상태 차트
+        const conditionCtx = document.getElementById('conditionChart').getContext('2d');
+        const conditionData = {
+            labels: ['신품', '중고'],
+            datasets: [{
+                data: [{{ condition_stats.new }}, {{ condition_stats.used }}],
+                backgroundColor: [
+                    'rgba(75, 192, 192, 0.8)',
+                    'rgba(255, 159, 64, 0.8)',
+                ]
+            }]
+        };
+        new Chart(conditionCtx, {
+            type: 'doughnut',
+            data: conditionData,
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                    }
+                }
+            }
+        });
+
+        // 가격대 차트
+        const priceCtx = document.getElementById('priceChart').getContext('2d');
+        const priceData = {
+            labels: ['0-20k', '20k-40k', '40k-60k', '60k+'],
+            datasets: [{
+                label: '상품 수',
+                data: [
+                    {{ price_ranges['0-20k'] }},
+                    {{ price_ranges['20-40k'] }},
+                    {{ price_ranges['40-60k'] }},
+                    {{ price_ranges['60k+'] }}
+                ],
+                backgroundColor: 'rgba(255, 99, 132, 0.8)',
+            }]
+        };
+        new Chart(priceCtx, {
+            type: 'bar',
+            data: priceData,
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
