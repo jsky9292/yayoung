@@ -294,11 +294,24 @@ def extract_details_from_article(driver, article_url):
         # 현재 창 핸들 저장
         main_window = driver.current_window_handle
 
+        # 쿠키 저장
+        cookies = driver.get_cookies()
+
         # 새 탭에서 상세 페이지 열기
         driver.execute_script(f"window.open('{article_url}', '_blank');")
 
         # 새 탭으로 전환
         driver.switch_to.window(driver.window_handles[-1])
+
+        # 쿠키 복원 (동일 도메인이므로 자동 전달되지만 명시적으로 설정)
+        for cookie in cookies:
+            try:
+                driver.add_cookie(cookie)
+            except:
+                pass
+
+        # 페이지 새로고침하여 쿠키 적용
+        driver.refresh()
         time.sleep(2)
 
         # iframe 전환 시도
@@ -365,24 +378,29 @@ def extract_details_from_article(driver, article_url):
                 valid_images = []
                 for idx, img in enumerate(all_images, 1):
                     try:
-                        img_src = img.get_attribute('src')
+                        # src와 data-img-src 모두 확인
+                        img_src = img.get_attribute('data-img-src') or img.get_attribute('src')
+
                         if img_src:
-                            # 이모티콘 URL 패턴 제외
-                            if any(x in img_src.lower() for x in ['emoticon', 'sticker', 'emoji', 'icon']):
+                            # 제외 패턴: 이모티콘, 아이콘, UI 이미지, 작은 썸네일
+                            exclude_patterns = [
+                                'emoticon', 'sticker', 'emoji', 'icon',
+                                'btn', 'button', 'new.png', 'skin/',
+                                'thumb/C90x90', 'thumb/C120x120', 'thumb/C150x150'
+                            ]
+                            if any(x in img_src.lower() for x in exclude_patterns):
                                 continue
-                            # 게시글 이미지만 포함
-                            if 'cafefile' in img_src or 'dn.kakaocdn.net' in img_src:
+
+                            # 실제 첨부 이미지만 포함 (cafeattach가 가장 확실)
+                            if 'cafeattach' in img_src:
                                 valid_images.append(img_src)
                     except:
                         continue
 
-                # 첫 번째 이미지는 썸네일일 수 있으므로 스킵 (옵션)
-                if len(valid_images) > 1:
-                    images = valid_images[1:]  # 첫 번째 제외
-                    print(f"    ✅ 이미지 {len(images)}개 추출 (썸네일 제외)")
-                elif valid_images:
-                    images = valid_images
-                    print(f"    ✅ 이미지 {len(images)}개 추출")
+                # 첫 번째 이미지만 썸네일로 사용
+                if valid_images:
+                    images = [valid_images[0]]  # 첫 번째만
+                    print(f"    ✅ 썸네일 이미지 추출: {images[0][:80]}...")
                 else:
                     print(f"    ❌ 유효한 이미지 없음")
 
