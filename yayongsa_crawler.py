@@ -310,10 +310,6 @@ def extract_details_from_article(driver, article_url):
             except:
                 pass
 
-        # 페이지 새로고침하여 쿠키 적용
-        driver.refresh()
-        time.sleep(2)
-
         # iframe 전환 시도
         try:
             iframe = driver.find_element(By.ID, "down")
@@ -393,7 +389,12 @@ def extract_details_from_article(driver, article_url):
 
                             # 실제 첨부 이미지만 포함 (cafeattach가 가장 확실)
                             if 'cafeattach' in img_src:
-                                valid_images.append(img_src)
+                                # 고해상도 이미지 URL 변환 (썸네일 방지)
+                                # 예: /thumb/R660x0/?fname=... → /original/?fname=...
+                                high_res_url = img_src.replace('/thumb/R660x0/', '/original/')
+                                high_res_url = high_res_url.replace('/thumb/R640x0/', '/original/')
+                                high_res_url = high_res_url.replace('/thumb/R400x0/', '/original/')
+                                valid_images.append(high_res_url)
                     except:
                         continue
 
