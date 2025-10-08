@@ -908,14 +908,16 @@ def get_user_stats(username):
                 data = json.load(f)
                 if isinstance(data, dict) and 'products' in data:
                     products = data['products']
-                    stats['yayongsa_items'] = len(products)
+                    # 가격이 0인 제품 제외하고 카운트 (dashboard_products와 동일)
+                    valid_products = [p for p in products if p.get('price', 0) > 0]
+                    stats['yayongsa_items'] = len(valid_products)
                     # 평균 가격 계산
-                    total_price = sum(p.get('price', 0) for p in products if p.get('price', 0) > 0)
-                    count = len([p for p in products if p.get('price', 0) > 0])
-                    if count > 0:
-                        stats['yayongsa_avg_price'] = total_price // count
+                    total_price = sum(p.get('price', 0) for p in valid_products)
+                    if valid_products:
+                        stats['yayongsa_avg_price'] = total_price // len(valid_products)
                 elif isinstance(data, list):
-                    stats['yayongsa_items'] = len(data)
+                    valid_products = [p for p in data if p.get('price', 0) > 0]
+                    stats['yayongsa_items'] = len(valid_products)
         except Exception as e:
             print(f"Error loading Yayongsa stats: {e}")
 

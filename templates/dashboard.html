@@ -501,14 +501,14 @@
             <form id="crawlSettingsForm">
                 <div style="margin-bottom: 20px;">
                     <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #374151;">크롤링 대상:</label>
-                    <select id="crawlMarket" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 16px;">
+                    <select id="crawlMarket" onchange="toggleYahooFields()" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 16px;">
                         <option value="yahoo">Yahoo Auction</option>
                         <option value="yayongsa">야용사 카페</option>
                         <option value="both">둘 다</option>
                     </select>
                 </div>
 
-                <div style="margin-bottom: 20px;">
+                <div id="yahooDateField" style="margin-bottom: 20px;">
                     <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #374151;">날짜 범위 (Yahoo만 해당):</label>
                     <select id="crawlDays" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 16px;">
                         <option value="0">전체 기간</option>
@@ -519,7 +519,7 @@
                     </select>
                 </div>
 
-                <div style="margin-bottom: 20px;">
+                <div id="yahooKeywordField" style="margin-bottom: 20px;">
                     <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #374151;">검색 키워드 (Yahoo):</label>
                     <input type="text" id="crawlKeyword" value="硬式グローブ" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 16px;">
                 </div>
@@ -537,11 +537,26 @@
     </div>
 
     <script>
+        function toggleYahooFields() {
+            const market = document.getElementById('crawlMarket').value;
+            const yahooDateField = document.getElementById('yahooDateField');
+            const yahooKeywordField = document.getElementById('yahooKeywordField');
+
+            if (market === 'yayongsa') {
+                yahooDateField.style.display = 'none';
+                yahooKeywordField.style.display = 'none';
+            } else {
+                yahooDateField.style.display = 'block';
+                yahooKeywordField.style.display = 'block';
+            }
+        }
+
         function openCrawlSettings(market) {
             document.getElementById('crawlSettingsModal').style.display = 'block';
             if (market) {
                 document.getElementById('crawlMarket').value = market;
             }
+            toggleYahooFields();
         }
 
         function closeCrawlSettings() {

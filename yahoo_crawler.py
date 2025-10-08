@@ -35,7 +35,7 @@ def setup_driver():
     driver.maximize_window()
     return driver
 
-def search_yahoo_auction(driver, keyword="", days=0, max_pages=3, category_id="2084032394"):
+def search_yahoo_auction(driver, keyword="", days=0, max_pages=3):
     """야후 옥션 검색 - 여러 페이지 크롤링
 
     Args:
@@ -43,14 +43,14 @@ def search_yahoo_auction(driver, keyword="", days=0, max_pages=3, category_id="2
         keyword: 검색 키워드 (비어있으면 카테고리 전체)
         days: 크롤링 기간 (0=전체, 1=오늘, 3=3일이내, 7=7일이내, 30=30일이내)
         max_pages: 크롤링할 최대 페이지 수
-        category_id: 카테고리 ID (2084032394=야구, 25042=골프, 25180=낚시)
     """
     products = []
 
     try:
-        # Yahoo Auction 카테고리 직접 접근
+        # Yahoo Auction 야구 글러브 카테고리 직접 접근
+        # 2084032394 = 야구 글러브 카테고리
         # 키워드 검색 없이 카테고리 페이지에서 직접 가져오기
-        base_url = f"https://auctions.yahoo.co.jp/category/list/{category_id}/?n=100"
+        base_url = "https://auctions.yahoo.co.jp/category/list/2084032394/?n=100"
 
         # 날짜 필터 추가
         date_text = "전체 기간"
@@ -360,57 +360,19 @@ def save_yahoo_data(products):
 
 def main():
     print("="*70)
-    print("🎌 Yahoo Auction Japan 스포츠 용품 크롤러")
+    print("🎌 Yahoo Auction Japan 글러브 크롤러")
     print("="*70)
-
-    # 카테고리 정의
-    CATEGORIES = {
-        "1": {"id": "2084032394", "name": "야구 글러브", "jp_name": "野球 > グローブ"},
-        "2": {"id": "25042", "name": "골프 용품", "jp_name": "ゴルフ"},
-        "3": {"id": "25180", "name": "낚시 용품", "jp_name": "釣り"},
-        "all": {"name": "전체 카테고리"}
-    }
-
-    # 사용자 선택
-    print("\n📂 크롤링할 카테고리를 선택하세요:")
-    print("  1. 야구 글러브")
-    print("  2. 골프 용품")
-    print("  3. 낚시 용품")
-    print("  all. 전체 카테고리")
-
-    choice = input("\n선택 (1/2/3/all): ").strip().lower()
-
-    if choice not in CATEGORIES:
-        print("❌ 잘못된 선택입니다.")
-        return
-
-    # 크롤링할 카테고리 목록 생성
-    if choice == "all":
-        categories_to_crawl = [cat for key, cat in CATEGORIES.items() if key != "all"]
-    else:
-        categories_to_crawl = [CATEGORIES[choice]]
 
     driver = setup_driver()
 
     try:
-        all_products = []
+        # 카테고리 페이지 직접 크롤링 (키워드 검색 대신)
+        print("\n🔍 야후옥션 야구 글러브 카테고리 크롤링")
+        print("📌 카테고리: 野球 > グローブ (2084032394)")
 
-        for category in categories_to_crawl:
-            print("\n" + "="*70)
-            print(f"🔍 {category['name']} 카테고리 크롤링")
-            print(f"📌 카테고리: {category['jp_name']} ({category['id']})")
-            print("="*70)
-
-            # 카테고리에서 직접 크롤링
-            products = search_yahoo_auction(driver, keyword="", days=0, max_pages=5, category_id=category['id'])
-
-            # 카테고리 정보 추가
-            for product in products:
-                product['category'] = category['name']
-                product['category_id'] = category['id']
-
-            all_products.extend(products)
-            print(f"   📊 {category['name']}: {len(products)}개 수집")
+        # 카테고리에서 직접 크롤링 (키워드 없이)
+        all_products = search_yahoo_auction(driver, keyword="", days=0, max_pages=5)  # 5페이지 크롤링
+        print(f"   📊 총 {len(all_products)}개 수집")
 
         # 중복 제거
         unique_products = []

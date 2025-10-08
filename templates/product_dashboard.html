@@ -889,9 +889,11 @@
                         return false;
                     }
                 }
-                // 마켓 필터
+                // 마켓 필터 (대소문자 무시 비교)
                 if (marketFilter !== 'all') {
-                    if (product.market !== marketFilter) {
+                    const productMarket = (product.market || '').toLowerCase();
+                    const filterMarket = marketFilter.toLowerCase();
+                    if (productMarket !== filterMarket && productMarket !== filterMarket) {
                         return false;
                     }
                 }

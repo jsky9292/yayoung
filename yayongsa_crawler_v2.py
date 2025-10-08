@@ -48,22 +48,18 @@ def search_yayongsa_gloves(user_dir="./"):
         driver.get("https://cafe.daum.net/baseballsale")
         time.sleep(3)
 
-        # 2. 로그인 확인
-        if "login" in driver.current_url.lower() or "accounts.kakao.com" in driver.current_url:
-            print("🔑 로그인이 필요합니다. 직접 로그인해주세요...")
-            time.sleep(30)  # 30초 대기
-        else:
-            print("✅ 이미 로그인되어 있습니다!")
+        # 2. 로그인 대기
+        print("\n2. 로그인 대기 중...")
+        print("   ⚠️ 다음 카페에 로그인해주세요!")
+        print("   ⚠️ 로그인 완료 후 30초 대기합니다...")
 
-        print("\n5초 후 크롤링을 시작합니다...")
-        time.sleep(5)
+        # 30초 카운트다운
+        for i in range(30, 0, -5):
+            time.sleep(5)
+            print(f"   ⏰ {i}초 남음...")
 
-        print("\n2. 로그인 상태 확인 중...")
-        current_url = driver.current_url
-        if 'login' not in current_url.lower() and 'accounts.kakao.com' not in current_url:
-            print("✅ 로그인 확인! 크롤링을 시작합니다...")
-        else:
-            print("⚠️ 로그인 상태 불확실 - 계속 진행합니다...")
+        print("\n✅ 대기 완료! 크롤링을 시작합니다...")
+        time.sleep(2)
 
         # 각 게시판 크롤링
         for board_info in boards:
@@ -101,8 +97,8 @@ def search_yayongsa_gloves(user_dir="./"):
                 except:
                     print("   ℹ️ iframe 없음 - 직접 파싱")
 
-            # 페이지네이션 - 테스트를 위해 1페이지만
-            max_pages = 1
+            # 페이지네이션 - 3페이지까지
+            max_pages = 3
             print(f"\n4. {board_info['name']} 게시글 목록 파싱... (최대 {max_pages}페이지)")
 
             for page_num in range(1, max_pages + 1):
@@ -132,7 +128,7 @@ def search_yayongsa_gloves(user_dir="./"):
                     continue
 
                 # 게시글 수집 (step9 로직 사용)
-                page_products = collect_articles(articles, board_info['board'])
+                page_products = collect_articles(driver, articles, board_info['board'])
                 products.extend(page_products)
 
                 print(f"   ✅ {page_num}페이지에서 {len(page_products)}개 수집")
@@ -181,17 +177,24 @@ def search_yayongsa_gloves(user_dir="./"):
 
     return products
 
-def collect_articles(articles, board_name):
+def collect_articles(driver, articles, board_name):
     """게시글 수집 함수 - step9 로직 사용"""
     products = []
 
-    for idx, article in enumerate(articles[:5], 1):  # 테스트를 위해 5개만
+    for idx, article in enumerate(articles[:50], 1):  # 최대 50개까지
         try:
             product_data = {}
             product_data['board'] = board_name
 
             # TD들 찾기
             tds = article.find_elements(By.TAG_NAME, "td")
+
+            # 공지사항 제외 - 첫 번째 td 확인
+            if len(tds) > 0:
+                first_td_text = tds[0].text.strip()
+                if '공지' in first_td_text or '필독' in first_td_text or 'notice' in first_td_text.lower():
+                    print(f"  ⏭️ 공지사항 스킵: {first_td_text}")
+                    continue
 
             # 두 번째 TD의 a 태그에서 제목 추출
             if len(tds) >= 2:
@@ -283,83 +286,145 @@ def extract_details_from_article(driver, article_url):
         except:
             pass
 
-        # 가격 추출 - 본문에서 숫자 찾기
+        # 가격 추출 - 특정 셀렉터에서 추출
         try:
-            content_element = driver.find_element(By.ID, "user_contents")
-            content_text = content_element.text
-
-            # 가격 패턴 찾기 (판매가격 : 형식 우선)
             import re
-            price_patterns = [
-                r'판매가격\s*[:\s]*(\d{1,3}(?:,\d{3})*)\s*(?:만원|만)',
-                r'판매가격\s*[:\s]*(\d{1,3}(?:,\d{3})*)',
-                r'판매가\s*[:\s]*(\d{1,3}(?:,\d{3})*)\s*(?:만원|만)',
-                r'가격\s*[:\s]*(\d{1,3}(?:,\d{3})*)\s*(?:만원|만)',
-                r'(\d{1,3}(?:,\d{3})*)\s*만원',
-                r'판매가\s*[:\s]*(\d{1,3}(?:,\d{3})*)',
-                r'가격\s*[:\s]*(\d{1,3}(?:,\d{3})*)',
-                r'(\d{1,3}(?:,\d{3})*)\s*원',
-            ]
 
-            for pattern in price_patterns:
-                matches = re.findall(pattern, content_text, re.IGNORECASE)
-                if matches:
-                    price_str = matches[0].replace(',', '')
-                    price = int(price_str)
-                    # 패턴에 '만원' 또는 '만'이 포함되어 있으면 10000 곱하기
-                    if '만원' in pattern or '만' in pattern:
-                        price *= 10000
-                    break
+            # 1단계: 지정된 셀렉터에서 가격 추출 (#user_contents > p:nth-child(10))
+            try:
+                price_element = driver.find_element(By.CSS_SELECTOR, "#user_contents > p:nth-child(10)")
+                price_text = price_element.text.strip()
+                print(f"    🔍 가격 요소 텍스트: {price_text}")
 
-            # 가격을 못 찾았으면 더 넓은 패턴으로 재시도
+                # 판매가격: 25만 또는 판매가격: 25 형식 파싱
+                price_patterns = [
+                    (r'판매가격\s*[:：]\s*(\d{1,3})\s*만', 10000),  # 판매가격: 25만
+                    (r'판매가격\s*[:：]\s*(\d{2,3})(?:\s|$)', 10000),  # 판매가격: 25
+                    (r'(\d{2,3})\s*만', 10000),  # 25만
+                    (r'(\d{5,7})', 1),  # 250000
+                ]
+
+                for pattern, multiplier in price_patterns:
+                    matches = re.findall(pattern, price_text, re.IGNORECASE)
+                    if matches:
+                        try:
+                            price_str = matches[0].replace(',', '').strip()
+                            price = int(price_str) * multiplier
+                            print(f"    ✅ 가격 추출 성공: {price:,}원")
+                            break
+                        except:
+                            continue
+            except Exception as e:
+                print(f"    ⚠️ 특정 셀렉터 실패: {e}")
+
+            # 2단계: 셀렉터 실패 시 본문 전체에서 검색
             if price == 0:
-                # 숫자만 찾기 (10000 이상인 첫 번째 숫자)
-                number_pattern = r'(\d{5,7})'
-                numbers = re.findall(number_pattern, content_text.replace(',', ''))
+                content_element = driver.find_element(By.ID, "user_contents")
+                content_text = content_element.text
+
+                price_patterns = [
+                    (r'판매가격\s*[:：]\s*(\d{1,3})\s*만', 10000),
+                    (r'판매가격\s*[:：]\s*(\d{2,3})(?:\s|$|\n)', 10000),
+                    (r'판매가\s*[:：]\s*(\d{1,3})\s*만', 10000),
+                    (r'가격\s*[:：]\s*(\d{1,3})\s*만', 10000),
+                    (r'(\d{1,3})\s*만\s*원', 10000),
+                ]
+
+                for pattern, multiplier in price_patterns:
+                    matches = re.findall(pattern, content_text, re.IGNORECASE)
+                    if matches:
+                        try:
+                            price_str = matches[0].replace(',', '').strip()
+                            price = int(price_str) * multiplier
+                            print(f"    ✅ 가격 추출 (본문): {price:,}원")
+                            break
+                        except:
+                            continue
+
+            # 3단계: 숫자만 찾기
+            if price == 0:
+                content_element = driver.find_element(By.ID, "user_contents")
+                content_text = content_element.text
+                numbers = re.findall(r'\b(\d{5,6})\b', content_text.replace(',', ''))
                 for num_str in numbers:
                     num = int(num_str)
-                    if 10000 <= num <= 9999999:  # 1만원~999만원 범위
+                    if 20000 <= num <= 999999:
                         price = num
+                        print(f"    ⚠️ 추정 가격: {price:,}원")
                         break
 
-            print(f"    추출된 가격: {price:,}원")
-        except Exception as e:
-            print(f"    가격 추출 실패: {e}")
+            if price == 0:
+                print(f"    ❌ 가격 추출 실패")
 
-        # 이미지 추출
+        except Exception as e:
+            print(f"    ❌ 가격 추출 오류: {e}")
+
+        # 이미지 추출 - 특정 셀렉터에서 추출
         try:
-            # 여러 이미지 셀렉터 시도 (특정 위치 우선)
-            image_selectors = [
-                "#user_contents > div:nth-child(10) > img",  # 사용자가 지정한 선택자
-                "#user_contents > div > img",
-                "#user_contents img",
-                ".user_contents img",
-                "img[src*='cafefile']"
-            ]
+            # 1단계: 지정된 셀렉터에서 이미지 추출 (#user_contents > div:nth-child(11) > img)
+            try:
+                img_element = driver.find_element(By.CSS_SELECTOR, "#user_contents > div:nth-child(11) > img")
+                img_src = img_element.get_attribute('src')
+                if img_src:
+                    images.append(img_src)
+                    print(f"    ✅ 이미지 추출 성공 (지정 셀렉터): {img_src[:80]}...")
+            except Exception as e:
+                print(f"    ⚠️ 지정 셀렉터 실패, 전체 검색 시도: {e}")
 
-            for selector in image_selectors:
-                img_elements = driver.find_elements(By.CSS_SELECTOR, selector)
-                if img_elements:
-                    for img in img_elements[:5]:  # 최대 5개까지
-                        img_src = img.get_attribute('src')
-                        if img_src and 'cafefile' in img_src:
-                            images.append(img_src)
-                    if images:  # 이미지를 찾았으면 중단
-                        print(f"    이미지 {len(images)}개 추출 (선택자: {selector})")
-                        break
+            # 2단계: 셀렉터 실패 시 모든 이미지 검색
+            if not images:
+                all_images = driver.find_elements(By.CSS_SELECTOR, "#user_contents img")
+
+                if all_images:
+                    print(f"    📷 총 {len(all_images)}개 이미지 발견")
+                    for idx, img in enumerate(all_images, 1):
+                        try:
+                            img_src = img.get_attribute('src')
+                            if img_src:
+                                # cafefile 또는 kakaocdn 이미지만 추출
+                                if 'cafefile' in img_src or 'dn.kakaocdn.net' in img_src:
+                                    images.append(img_src)
+                                    if idx <= 3:  # 처음 3개만 로그
+                                        print(f"      {idx}. {img_src[:80]}...")
+                        except:
+                            continue
+
+                    if images:
+                        print(f"    ✅ 이미지 {len(images)}개 추출 성공 (전체 검색)")
+                    else:
+                        print(f"    ❌ 유효한 이미지 없음")
+                else:
+                    print(f"    ❌ 이미지 요소를 찾을 수 없음")
 
         except Exception as e:
-            print(f"    이미지 추출 실패: {e}")
+            print(f"    ❌ 이미지 추출 오류: {e}")
 
         # 탭 닫고 원래 탭으로 돌아가기
-        driver.close()
-        driver.switch_to.window(main_window)
+        try:
+            driver.close()
+            time.sleep(0.5)
+            if main_window in driver.window_handles:
+                driver.switch_to.window(main_window)
+            else:
+                # 원래 탭이 닫혔으면 첫 번째 탭으로
+                driver.switch_to.window(driver.window_handles[0])
+        except Exception as e:
+            print(f"    ⚠️ 탭 전환 오류: {e}")
 
     except Exception as e:
-        print(f"    상세 페이지 접근 실패: {e}")
+        print(f"    ❌ 상세 페이지 접근 실패: {e}")
         # 실패 시 원래 탭으로 돌아가기
         try:
-            driver.switch_to.window(main_window)
+            # 현재 열린 탭이 여러 개면 현재 탭 닫기
+            if len(driver.window_handles) > 1:
+                driver.close()
+                time.sleep(0.3)
+
+            # 원래 탭으로 복귀
+            if main_window and main_window in driver.window_handles:
+                driver.switch_to.window(main_window)
+            elif driver.window_handles:
+                driver.switch_to.window(driver.window_handles[0])
         except:
             pass
 
