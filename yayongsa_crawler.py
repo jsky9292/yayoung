@@ -325,29 +325,52 @@ def extract_details_from_article(driver, article_url):
             content_element = driver.find_element(By.ID, "user_contents")
             content_text = content_element.text
 
+            # 더 포괄적인 가격 패턴
             price_patterns = [
-                (r'판매가격\s*[:：]\s*(\d{1,3})\s*만', 10000),
-                (r'판매가격\s*[:：]\s*(\d{2,3})(?:\s|$|\n)', 10000),
-                (r'판매가\s*[:：]\s*(\d{1,3})\s*만', 10000),
-                (r'가격\s*[:：]\s*(\d{1,3})\s*만', 10000),
+                # "판매가격: 43만", "판매가: 43"
+                (r'판매가격\s*[:：=]\s*(\d{1,3})\s*만', 10000),
+                (r'판매가\s*[:：=]\s*(\d{1,3})\s*만', 10000),
+                (r'가격\s*[:：=]\s*(\d{1,3})\s*만', 10000),
+
+                # "43만원", "28만"
                 (r'(\d{1,3})\s*만\s*원', 10000),
+                (r'(\d{1,3})\s*만(?:\s|$|\n|\.)', 10000),
+
+                # "430000원", "430,000"
+                (r'(\d{2,3})[,.]?(\d{3})[,.]?(\d{3})\s*원', 1),
+                (r'(\d{2,3})[,.](\d{3})\s*원', 1),
+
+                # "43" (만 단위로 추정)
+                (r'판매가격\s*[:：=]\s*(\d{2,3})(?:\s|$|\n)', 10000),
+                (r'판매가\s*[:：=]\s*(\d{2,3})(?:\s|$|\n)', 10000),
+                (r'가격\s*[:：=]\s*(\d{2,3})(?:\s|$|\n)', 10000),
             ]
 
             for pattern, multiplier in price_patterns:
                 matches = re.findall(pattern, content_text, re.IGNORECASE)
                 if matches:
                     try:
-                        price_str = matches[0].replace(',', '').strip()
+                        # 여러 그룹 매칭된 경우 (예: 430,000 -> ('430', '000'))
+                        if isinstance(matches[0], tuple):
+                            price_str = ''.join(matches[0])
+                        else:
+                            price_str = matches[0]
+
+                        price_str = price_str.replace(',', '').replace('.', '').strip()
                         price = int(price_str) * multiplier
-                        print(f"    ✅ 가격 추출 (본문): {price:,}원")
-                        break
+
+                        # 가격 범위 검증 (2만원 ~ 200만원)
+                        if 20000 <= price <= 2000000:
+                            print(f"    ✅ 가격 추출: {price:,}원 (패턴: {pattern})")
+                            break
+                        else:
+                            price = 0
                     except:
                         continue
 
-            # 숫자만 찾기
+            # 숫자만 찾기 (마지막 수단)
             if price == 0:
-                content_element = driver.find_element(By.ID, "user_contents")
-                content_text = content_element.text
+                # 5~6자리 숫자 찾기
                 numbers = re.findall(r'\b(\d{5,6})\b', content_text.replace(',', ''))
                 for num_str in numbers:
                     num = int(num_str)
@@ -357,7 +380,7 @@ def extract_details_from_article(driver, article_url):
                         break
 
             if price == 0:
-                print(f"    ❌ 가격 추출 실패")
+                print(f"    ❌ 가격 추출 실패 (본문 샘플: {content_text[:100]}...)")
 
         except Exception as e:
             print(f"    ❌ 가격 추출 오류: {e}")
